@@ -23,6 +23,7 @@ const renderEamilTemplate = async (
 ): Promise<string> => {
   const templatePath = path.join(
     process.cwd(),
+    "apps",
     "auth-service",
     "src",
     "utils",
@@ -34,21 +35,51 @@ const renderEamilTemplate = async (
 
 // sed an email using nodemailer
 
+// export const sendEmail = async (
+//   to: string,
+//   subject: string,
+//   template: string,
+//   data: Record<string, any>
+// ) => {
+
+//   try {
+//     const html = await renderEamilTemplate(template, data);
+//     await transporter.sendMail({
+//       from: `${process.env.SMTP_USER} `,
+//       to,
+//       subject,
+//       html,
+//     })
+//     return true;
+    
+//   } catch (error) {
+//     console.error("Error sending email:", error);
+//     return false;
+//   }
+// };
+
+
 export const sendEmail = async (
   to: string,
   subject: string,
   template: string,
   data: Record<string, any>
 ) => {
-
   try {
-    const html = await renderEamilTemplate(template, data);
+    // Ensure all common template variables have defaults
+    const templateData = {
+      companyName: process.env.COMPANY_NAME || 'The Team',
+      year: new Date().getFullYear(),
+      ...data, // User-provided data can override defaults
+    };
+
+    const html = await renderEamilTemplate(template, templateData);
     await transporter.sendMail({
-      from: `${process.env.SMTP_USER} `,
+      from: `${process.env.SMTP_USER}`,
       to,
       subject,
       html,
-    })
+    });
     return true;
     
   } catch (error) {
