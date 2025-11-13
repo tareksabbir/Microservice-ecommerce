@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Activate Your Account</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+    "
+  >
+    <table
+      role="presentation"
+      style="width: 100%; border-collapse: collapse; background-color: #f5f5f5"
+    >
+      <tr>
+        <td align="center" style="padding: 40px 20px">
+          <table
+            role="presentation"
+            style="
+              max-width: 600px;
+              width: 100%;
+              border-collapse: collapse;
+              background-color: #ffffff;
+              border-radius: 16px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            "
+          >
+            <!-- Header -->
+            <tr>
+              <td
+                style="
+                  padding: 48px 40px 32px;
+                  text-align: center;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  border-radius: 16px 16px 0 0;
+                "
+              >
+                <div
+                  style="
+                    width: 80px;
+                    height: 80px;
+                    margin: 0 auto 20px;
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border-radius: 50%;
+                    display: inline-block;
+                    line-height: 80px;
+                  "
+                >
+                  <svg
+                    width="48"
+                    height="48"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style="vertical-align: middle"
+                  >
+                    <path
+                      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"
+                      fill="white"
+                    />
+                  </svg>
+                </div>
+                <h1
+                  style="
+                    margin: 0;
+                    color: #ffffff;
+                    font-size: 28px;
+                    font-weight: 700;
+                    letter-spacing: -0.5px;
+                  "
+                >
+                  Account Activation
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td style="padding: 40px">
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    color: #1a1a1a;
+                    font-size: 16px;
+                    line-height: 1.6;
+                  "
+                >
+                  Hello <strong><%= name %></strong>,
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 32px;
+                    color: #4a5568;
+                    font-size: 16px;
+                    line-height: 1.6;
+                  "
+                >
+                  Thank you for registering! To complete your account
+                  activation, please use the One-Time Password (OTP) below:
+                </p>
+
+                <!-- OTP Box -->
+                <table
+                  role="presentation"
+                  style="
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 32px;
+                  "
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      style="
+                        padding: 32px;
+                        background: linear-gradient(
+                          135deg,
+                          #f6f8fb 0%,
+                          #e9ecef 100%
+                        );
+                        border-radius: 12px;
+                        border: 2px dashed #cbd5e0;
+                      "
+                    >
+                      <div
+                        style="
+                          font-size: 14px;
+                          color: #718096;
+                          margin-bottom: 12px;
+                          text-transform: uppercase;
+                          letter-spacing: 1px;
+                          font-weight: 600;
+                        "
+                      >
+                        Your OTP Code
+                      </div>
+                      <div
+                        style="
+                          font-size: 42px;
+                          font-weight: 800;
+                          color: #667eea;
+                          letter-spacing: 8px;
+                          font-family: 'Courier New', monospace;
+                        "
+                      >
+                        <%= otp %>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Warning Box -->
+                <table
+                  role="presentation"
+                  style="
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 32px;
+                  "
+                >
+                  <tr>
+                    <td
+                      style="
+                        padding: 20px;
+                        background-color: #fff3cd;
+                        border-left: 4px solid #ffc107;
+                        border-radius: 8px;
+                      "
+                    >
+                      <p
+                        style="
+                          margin: 0;
+                          color: #856404;
+                          font-size: 14px;
+                          line-height: 1.6;
+                        "
+                      >
+                        <strong>⏰ Important:</strong> This OTP will expire in
+                        <strong>5 minutes</strong>. Please use it promptly to
+                        activate your account.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    color: #4a5568;
+                    font-size: 15px;
+                    line-height: 1.6;
+                  "
+                >
+                  If you didn't request this activation, please ignore this
+                  email or contact our support team if you have concerns.
+                </p>
+
+                <div
+                  style="
+                    margin-top: 40px;
+                    padding-top: 32px;
+                    border-top: 1px solid #e2e8f0;
+                  "
+                >
+                  <p
+                    style="
+                      margin: 0;
+                      color: #718096;
+                      font-size: 14px;
+                      line-height: 1.6;
+                    "
+                  >
+                    Best regards,<br />
+                    <strong style="color: #4a5568"
+                      ><%= companyName || 'The Team' %></strong
+                    >
+                  </p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                style="
+                  padding: 32px 40px;
+                  background-color: #f7fafc;
+                  border-radius: 0 0 16px 16px;
+                  text-align: center;
+                "
+              >
+                <p
+                  style="
+                    margin: 0 0 12px;
+                    color: #718096;
+                    font-size: 13px;
+                    line-height: 1.6;
+                  "
+                >
+                  This is an automated email. Please do not reply to this
+                  message.
+                </p>
+                <p style="margin: 0; color: #a0aec0; font-size: 12px">
+                  © <%= year || new Date().getFullYear() %> <%= companyName ||
+                  'Your Company' %>. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
