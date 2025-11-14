@@ -2,16 +2,9 @@
   "swagger": "2.0",
   "info": {
     "title": "Auth Service API",
-    "description": "Authentication and authorization service for user and seller registration, login, and account management. This service provides secure OTP-based email verification with built-in rate limiting and security features.",
-    "version": "1.0.0",
-    "contact": {
-      "name": "API Support",
-      "email": "support@example.com"
-    },
-    "license": {
-      "name": "MIT",
-      "url": "https://opensource.org/licenses/MIT"
-    }
+    "description": "Enterprise-grade authentication and authorization service providing secure user registration, login, and account management. Features include OTP-based email verification, JWT token management, comprehensive rate limiting, and advanced security measures.",
+    "version": "1.0.0"
+  
   },
   "host": "localhost:6001",
   "basePath": "/api",
@@ -20,16 +13,12 @@
   "produces": ["application/json"],
   "tags": [
     {
-      "name": "User Authentication",
-      "description": "User registration and authentication endpoints with OTP verification"
-    },
-    {
-      "name": "Seller Authentication",
-      "description": "Seller registration and authentication endpoints"
-    },
-    {
       "name": "Health",
-      "description": "Service health check endpoints"
+      "description": "Service health and status monitoring endpoints"
+    },
+    {
+      "name": "User Authentication",
+      "description": "User registration, verification, and authentication endpoints with OTP verification and JWT token management"
     }
   ],
   "paths": {
@@ -37,27 +26,14 @@
       "get": {
         "tags": ["Health"],
         "summary": "Health check endpoint",
-        "description": "Check if the API service is running and responsive",
+        "description": "Verifies that the authentication service is operational and responsive. Returns service status, name, and current timestamp.",
+        "operationId": "healthCheck",
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Service is healthy and operational",
             "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "healthy"
-                },
-                "service": {
-                  "type": "string",
-                  "example": "Auth Service"
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "date-time",
-                  "example": "2025-11-14T10:30:00.000Z"
-                }
-              }
+              "$ref": "#/definitions/HealthResponse"
             },
             "examples": {
               "application/json": {
@@ -66,6 +42,12 @@
                 "timestamp": "2025-11-14T10:30:00.000Z"
               }
             }
+          },
+          "503": {
+            "description": "Service unavailable or unhealthy",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       }
@@ -73,14 +55,17 @@
     "/user-registration": {
       "post": {
         "tags": ["User Authentication"],
-        "summary": "Register a new user",
-        "description": "Initiates user registration by validating email uniqueness and sending a 6-digit OTP to the provided email address. The OTP is valid for 5 minutes.\n\n**Rate Limits:**\n- Maximum 2 OTP requests per hour per email\n- 1 minute cooldown between OTP requests\n- Account locked for 30 minutes after multiple failed verification attempts\n\n**Security Features:**\n- Email format validation\n- Duplicate email prevention\n- OTP spam protection\n- Request throttling",
+        "summary": "Initiate user registration",
+        "description": "Begins the user registration process by validating input data, checking email uniqueness, and sending a secure 6-digit OTP to the provided email address.\n\n**Process Flow:**\n1. Validates email format and checks for existing accounts\n2. Generates a secure 6-digit OTP\n3. Sends OTP via email (valid for 5 minutes)\n4. Returns success message\n\n**Rate Limits:**\n- Maximum 2 OTP requests per hour per email address\n- Minimum 1 minute cooldown between consecutive requests\n- Account locked for 30 minutes after exceeding attempt limits\n\n**Security Features:**\n- Email format validation with RFC 5322 compliance\n- Duplicate email prevention\n- Anti-spam protection with rate limiting\n- Request throttling and IP-based tracking\n- Secure OTP generation using cryptographic random\n\n**Password Requirements:**\n- Minimum 8 characters\n- Must contain: uppercase letter, lowercase letter, number, and special character",
+        "operationId": "registerUser",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
             "required": true,
-            "description": "User registration details",
+            "description": "User registration payload containing email, name, and password",
             "schema": {
               "$ref": "#/definitions/UserRegistration"
             }
@@ -88,31 +73,27 @@
         ],
         "responses": {
           "200": {
-            "description": "OTP sent successfully to the provided email address",
+            "description": "OTP sent successfully. User should check their email to complete registration.",
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "example": "OTP Sent. Please check your email to verify your account."
-                }
-              }
+              "$ref": "#/definitions/OTPSentResponse"
             },
             "examples": {
               "application/json": {
-                "message": "OTP Sent. Please check your email to verify your account."
+                "message": "OTP Sent. Please check your email to verify your account.",
+                "expiresIn": "5 minutes"
               }
             }
           },
           "400": {
-            "description": "Bad Request - Validation error or business rule violation",
+            "description": "Bad Request - Validation failed or business rule violated",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             },
             "examples": {
               "application/json": {
                 "error": "Email already in use",
-                "message": "The provided email address is already registered"
+                "message": "The provided email address is already registered. Please use a different email or try logging in.",
+                "statusCode": 400
               }
             }
           },
@@ -123,8 +104,99 @@
             },
             "examples": {
               "application/json": {
-                "error": "Too many OTP requests. Please wait for 1 hour before requesting a new OTP.",
-                "message": "Rate limit exceeded"
+                "error": "Too many OTP requests",
+                "message": "You have exceeded the maximum number of OTP requests. Please wait 1 hour before requesting a new OTP.",
+                "retryAfter": 3600,
+                "statusCode": 429
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Unexpected error occurred",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Internal server error",
+                "message": "An unexpected error occurred. Please try again later.",
+                "statusCode": 500
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify-user": {
+      "post": {
+        "tags": ["User Authentication"],
+        "summary": "Verify OTP and complete registration",
+        "description": "Completes the user registration process by verifying the OTP code sent to the user's email. Upon successful verification, creates a new user account with securely hashed password.\n\n**Verification Process:**\n1. Validates all required fields (email, OTP, password, name)\n2. Verifies OTP correctness and expiration\n3. Checks for duplicate user accounts\n4. Hashes password using bcrypt (10 salt rounds)\n5. Creates user record in database\n6. Clears all OTP-related cache data\n\n**Verification Rules:**\n- OTP must be used within 5 minutes of generation\n- Maximum 2 incorrect OTP attempts allowed\n- Account temporarily locked for 30 minutes after exceeding failed attempts\n- Each OTP can only be used once (single-use token)\n- Case-sensitive OTP matching\n\n**Security Measures:**\n- Password hashing with bcrypt (cost factor: 10)\n- OTP attempt tracking and limitation\n- Automatic cache cleanup after verification\n- Protection against timing attacks\n- Account lockout mechanism",
+        "operationId": "verifyUser",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "description": "OTP verification payload including all registration data and the OTP code",
+            "schema": {
+              "$ref": "#/definitions/VerifyOTP"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "User account created successfully. Registration complete.",
+            "schema": {
+              "$ref": "#/definitions/RegistrationSuccessResponse"
+            },
+            "examples": {
+              "application/json": {
+                "success": true,
+                "message": "User registered successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid OTP, expired OTP, missing fields, or duplicate user",
+            "schema": {
+              "$ref": "#/definitions/OTPErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Invalid OTP",
+                "message": "The OTP you entered is incorrect. 1 attempt(s) remaining.",
+                "attemptsRemaining": 1,
+                "statusCode": 400
+              }
+            }
+          },
+          "410": {
+            "description": "Gone - OTP has expired",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "error": "OTP expired",
+                "message": "Your OTP has expired. Please request a new OTP to continue registration.",
+                "statusCode": 410
+              }
+            }
+          },
+          "423": {
+            "description": "Locked - Account temporarily locked due to multiple failed verification attempts",
+            "schema": {
+              "$ref": "#/definitions/LockoutErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Account locked",
+                "message": "Your account has been temporarily locked due to multiple failed verification attempts. Please try again after 30 minutes.",
+                "lockedUntil": "2025-11-14T11:00:00.000Z",
+                "statusCode": 423
               }
             }
           },
@@ -137,66 +209,86 @@
         }
       }
     },
-    "/verify-user": {
+    "/login-user": {
       "post": {
         "tags": ["User Authentication"],
-        "summary": "Verify OTP and complete registration",
-        "description": "Completes the user registration process by verifying the OTP sent to the user's email. Upon successful verification, the user account is created with a hashed password.\n\n**Verification Rules:**\n- OTP must be used within 5 minutes of generation\n- Maximum 2 incorrect attempts allowed\n- Account locked for 30 minutes after exceeding failed attempts\n- OTP can only be used once\n\n**Security:**\n- Password is hashed using bcrypt with salt rounds of 10\n- All OTP-related cache keys are cleared upon successful verification",
+        "summary": "User login",
+        "description": "Authenticates a user with email and password credentials. Upon successful authentication, generates JWT access and refresh tokens and sets them as HTTP-only cookies.\n\n**Authentication Flow:**\n1. Validates email and password presence\n2. Retrieves user account from database\n3. Verifies password using bcrypt comparison\n4. Generates JWT access token (15 minutes validity)\n5. Generates JWT refresh token (7 days validity)\n6. Sets tokens in secure HTTP-only cookies\n7. Returns user information\n\n**Security Features:**\n- Bcrypt password comparison (constant-time)\n- JWT tokens with short expiration times\n- HTTP-only cookie storage (XSS protection)\n- Secure flag for HTTPS connections\n- SameSite cookie attribute (CSRF protection)\n- Rate limiting on login attempts\n\n**Token Details:**\n- **Access Token**: Short-lived (15 minutes), used for API authentication\n- **Refresh Token**: Long-lived (7 days), used to obtain new access tokens\n- Both tokens contain user ID and role information",
+        "operationId": "loginUser",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
             "required": true,
-            "description": "OTP verification details including all registration data",
+            "description": "Login credentials (email and password)",
             "schema": {
-              "$ref": "#/definitions/VerifyOTP"
+              "$ref": "#/definitions/UserLogin"
             }
           }
         ],
         "responses": {
-          "201": {
-            "description": "User registered successfully",
+          "200": {
+            "description": "Login successful. JWT tokens set in HTTP-only cookies.",
             "schema": {
-              "type": "object",
-              "properties": {
-                "success": {
-                  "type": "boolean",
-                  "example": true
-                },
-                "message": {
-                  "type": "string",
-                  "example": "User registered successfully"
-                }
+              "$ref": "#/definitions/LoginSuccessResponse"
+            },
+            "headers": {
+              "Set-Cookie": {
+                "type": "string",
+                "description": "HTTP-only cookies containing access and refresh tokens"
               }
             },
             "examples": {
               "application/json": {
                 "success": true,
-                "message": "User registered successfully"
+                "message": "Login successful",
+                "user": {
+                  "id": "usr_1234567890",
+                  "email": "tarek@gmail.com",
+                  "name": "Tarek Rahman"
+                }
               }
             }
           },
           "400": {
-            "description": "Bad Request - Invalid or expired OTP, missing fields, or duplicate user",
-            "schema": {
-              "$ref": "#/definitions/OTPErrorResponse"
-            },
-            "examples": {
-              "application/json": {
-                "error": "Invalid OTP. 1 attempt(s) remaining.",
-                "message": "OTP verification failed"
-              }
-            }
-          },
-          "423": {
-            "description": "Locked - Account temporarily locked due to multiple failed attempts",
+            "description": "Bad Request - Missing credentials",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             },
             "examples": {
               "application/json": {
-                "error": "Account locked due to multiple failed attempts. Please try again after 30 minutes.",
-                "message": "Account temporarily locked"
+                "error": "Validation error",
+                "message": "Email and password are required",
+                "statusCode": 400
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid credentials or user not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Authentication failed",
+                "message": "Invalid email or password",
+                "statusCode": 401
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded on login attempts",
+            "schema": {
+              "$ref": "#/definitions/RateLimitErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Too many login attempts",
+                "message": "You have exceeded the maximum number of login attempts. Please try again later.",
+                "retryAfter": 900,
+                "statusCode": 429
               }
             }
           },
@@ -219,22 +311,25 @@
           "type": "string",
           "format": "email",
           "example": "tarek@gmail.com",
-          "description": "User's email address. Must be unique and in valid email format.",
-          "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+          "description": "User's email address. Must be unique, in valid RFC 5322 format, and not previously registered.",
+          "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+          "minLength": 5,
+          "maxLength": 255
         },
         "name": {
           "type": "string",
           "minLength": 2,
           "maxLength": 100,
           "example": "Tarek Rahman",
-          "description": "User's full name (2-100 characters)"
+          "description": "User's full name. Must be between 2-100 characters. Special characters and unicode supported."
         },
         "password": {
           "type": "string",
           "format": "password",
           "minLength": 8,
+          "maxLength": 128,
           "example": "SecurePass123!",
-          "description": "User's password. Minimum 8 characters. Will be hashed using bcrypt before storage."
+          "description": "User's password. Must be at least 8 characters and contain: uppercase letter, lowercase letter, number, and special character (@$!%*?&). Will be hashed using bcrypt (10 rounds) before storage."
         }
       }
     },
@@ -246,13 +341,13 @@
           "type": "string",
           "format": "email",
           "example": "tarek@gmail.com",
-          "description": "User's email address (must match the email used in registration)"
+          "description": "User's email address. Must exactly match the email used during registration."
         },
         "otp": {
           "type": "string",
           "pattern": "^[0-9]{6}$",
           "example": "123456",
-          "description": "6-digit OTP code sent to email. Valid for 5 minutes.",
+          "description": "6-digit numeric OTP code sent to email. Valid for 5 minutes from generation. Case-sensitive.",
           "minLength": 6,
           "maxLength": 6
         },
@@ -260,8 +355,9 @@
           "type": "string",
           "format": "password",
           "minLength": 8,
+          "maxLength": 128,
           "example": "SecurePass123!",
-          "description": "User's password (minimum 8 characters)"
+          "description": "User's chosen password. Must meet password requirements."
         },
         "name": {
           "type": "string",
@@ -272,55 +368,208 @@
         }
       }
     },
-    "SuccessResponse": {
+    "UserLogin": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "tarek@gmail.com",
+          "description": "Registered user's email address"
+        },
+        "password": {
+          "type": "string",
+          "format": "password",
+          "example": "SecurePass123!",
+          "description": "User's password"
+        }
+      }
+    },
+    "HealthResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "example": "healthy",
+          "description": "Current service health status"
+        },
+        "service": {
+          "type": "string",
+          "example": "Auth Service",
+          "description": "Service name identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2025-11-14T10:30:00.000Z",
+          "description": "ISO 8601 formatted timestamp of health check"
+        }
+      }
+    },
+    "OTPSentResponse": {
       "type": "object",
       "properties": {
         "message": {
           "type": "string",
-          "example": "OTP Sent. Please check your email to verify your account."
+          "example": "OTP Sent. Please check your email to verify your account.",
+          "description": "Success message confirming OTP delivery"
+        },
+        "expiresIn": {
+          "type": "string",
+          "example": "5 minutes",
+          "description": "OTP validity duration"
+        }
+      }
+    },
+    "RegistrationSuccessResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "User registered successfully"
+        }
+      }
+    },
+    "LoginSuccessResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Login successful"
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "usr_1234567890",
+              "description": "Unique user identifier"
+            },
+            "email": {
+              "type": "string",
+              "example": "tarek@gmail.com"
+            },
+            "name": {
+              "type": "string",
+              "example": "Tarek Rahman"
+            }
+          }
         }
       }
     },
     "ErrorResponse": {
       "type": "object",
+      "required": ["error", "message"],
       "properties": {
         "error": {
           "type": "string",
-          "example": "Email already in use",
-          "description": "Error message describing what went wrong"
+          "example": "Validation error",
+          "description": "Error type or category"
         },
         "message": {
           "type": "string",
-          "example": "Validation failed",
-          "description": "Additional context about the error"
+          "example": "The provided email address is already registered",
+          "description": "Human-readable error message describing what went wrong"
+        },
+        "statusCode": {
+          "type": "integer",
+          "example": 400,
+          "description": "HTTP status code"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional error details or validation errors"
         }
       }
     },
     "OTPErrorResponse": {
       "type": "object",
+      "required": ["error", "message"],
       "properties": {
         "error": {
           "type": "string",
-          "example": "Invalid OTP. 1 attempt(s) remaining.",
-          "description": "OTP verification error with remaining attempts count"
+          "example": "Invalid OTP",
+          "description": "OTP-specific error type"
         },
         "message": {
           "type": "string",
-          "example": "OTP verification failed"
+          "example": "The OTP you entered is incorrect. 1 attempt(s) remaining.",
+          "description": "Detailed error message with attempt information"
+        },
+        "attemptsRemaining": {
+          "type": "integer",
+          "example": 1,
+          "description": "Number of verification attempts remaining before lockout",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "statusCode": {
+          "type": "integer",
+          "example": 400
         }
       }
     },
     "RateLimitErrorResponse": {
       "type": "object",
+      "required": ["error", "message"],
       "properties": {
         "error": {
           "type": "string",
-          "example": "Too many OTP requests. Please wait for 1 hour before requesting a new OTP.",
-          "description": "Rate limit violation details"
+          "example": "Too many OTP requests",
+          "description": "Rate limit error type"
         },
         "message": {
           "type": "string",
-          "example": "Rate limit exceeded"
+          "example": "You have exceeded the maximum number of OTP requests. Please wait 1 hour before requesting a new OTP.",
+          "description": "Rate limit violation details with wait time"
+        },
+        "retryAfter": {
+          "type": "integer",
+          "example": 3600,
+          "description": "Number of seconds to wait before retrying"
+        },
+        "statusCode": {
+          "type": "integer",
+          "example": 429
+        }
+      }
+    },
+    "LockoutErrorResponse": {
+      "type": "object",
+      "required": ["error", "message"],
+      "properties": {
+        "error": {
+          "type": "string",
+          "example": "Account locked",
+          "description": "Account lockout error"
+        },
+        "message": {
+          "type": "string",
+          "example": "Your account has been temporarily locked due to multiple failed verification attempts. Please try again after 30 minutes.",
+          "description": "Lockout reason and duration"
+        },
+        "lockedUntil": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2025-11-14T11:00:00.000Z",
+          "description": "ISO 8601 timestamp when the lockout expires"
+        },
+        "statusCode": {
+          "type": "integer",
+          "example": 423
         }
       }
     }
@@ -330,11 +579,33 @@
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "JWT Authorization header using the Bearer scheme. Format: 'Bearer {token}'"
+      "description": "JWT Authorization header using the Bearer scheme. Format: 'Bearer {token}'. Access tokens are valid for 15 minutes."
     }
   },
-  "externalDocs": {
-    "description": "Find out more about our authentication service",
-    "url": "https://docs.example.com"
+  "responses": {
+    "UnauthorizedError": {
+      "description": "Authentication token is missing, invalid, or expired",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "ForbiddenError": {
+      "description": "Authenticated but lacks permission to access the resource",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "NotFoundError": {
+      "description": "Requested resource not found",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "ValidationError": {
+      "description": "Request validation failed",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    }
   }
 }
