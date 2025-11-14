@@ -2,9 +2,11 @@ import { NextFunction, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import {
   checkOtpRestrictions,
+  handleForgotPassword,
   sendOtp,
   trackOtpRequest,
   validateRegistrationData,
+  verifyForgotPasswordOtp,
   verifyOtp,
 } from "../utils/auth.helper";
 import prisma from "../../../../packages/libs/prisma";
@@ -13,7 +15,6 @@ import jwt from "jsonwebtoken";
 import { setCookies } from "../utils/cookies/setCookies";
 
 // Register a new user
-
 export const userRegistration = async (
   req: Request,
   res: Response,
@@ -41,7 +42,38 @@ export const userRegistration = async (
 };
 
 // varify user otp
+// export const verifyUser = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const { email, otp, password, name } = req.body;
+//     if (!email || !otp || !password || !name) {
+//       return next(new ValidationError("all fields are required"));
+//     }
+//     const exisistingUser = await prisma.users.findUnique({ where: { email } });
+//     if (exisistingUser) {
+//       return next(new ValidationError("User already exists with this email"));
+//     }
+//     await verifyOtp(email, otp, next);
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     await prisma.users.create({
+//       data: {
+//         email,
+//         name,
+//         password: hashedPassword,
+//       },
+//     });
+//     res
+//       .status(201)
+//       .json({ success: true, message: "User registered successfully" });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 
+// Now the controller works correctly
 export const verifyUser = async (
   req: Request,
   res: Response,
@@ -49,14 +81,19 @@ export const verifyUser = async (
 ) => {
   try {
     const { email, otp, password, name } = req.body;
+    
     if (!email || !otp || !password || !name) {
-      return next(new ValidationError("all fields are required"));
+      throw new ValidationError("All fields are required");
     }
-    const exisistingUser = await prisma.users.findUnique({ where: { email } });
-    if (exisistingUser) {
-      return next(new ValidationError("User already exists with this email"));
+    
+    const existingUser = await prisma.users.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new ValidationError("User already exists with this email");
     }
-    await verifyOtp(email, otp, next);
+    
+    // If verifyOtp throws, it's caught by catch block below
+    await verifyOtp(email, otp);
+    
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.users.create({
       data: {
@@ -65,16 +102,17 @@ export const verifyUser = async (
         password: hashedPassword,
       },
     });
-    res
-      .status(201)
-      .json({ success: true, message: "User registered successfully" });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: "User registered successfully" 
+    });
   } catch (error) {
-    return next(error);
+    next(error);
   }
 };
 
 // login user
-
 export const loginUser = async (
   req: Request,
   res: Response,
@@ -119,6 +157,74 @@ export const loginUser = async (
         name: user.name,
       },
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// User Forgot Password
+
+export const userForgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    await handleForgotPassword(req, res, next, "user");
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// varify forget password otp
+
+export const verifyUserForgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    await verifyForgotPasswordOtp(req, res, next);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// reset user password
+
+export const resetUserPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+      return next(new ValidationError("All fields are required"));
+    }
+    const user = await prisma.users.findUnique({ where: { email } });
+    if (!user) {
+      return next(new ValidationError("User not found with this email"));
+    }
+
+    // compair exixting password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password!);
+    if (isSamePassword) {
+      return next(
+        new ValidationError(
+          "New password must be different from the old password"
+        )
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.users.update({
+      where: { email },
+      data: { password: hashedPassword },
+    });
+    res
+      .status(200)
+      .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
     return next(error);
   }
