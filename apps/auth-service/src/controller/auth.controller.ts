@@ -8,7 +8,10 @@ import {
   verifyOtp,
 } from "../utils/auth.helper";
 import prisma from "../../../../packages/libs/prisma";
-import { ValidationError } from "../../../../packages/error-handler";
+import { AuthError, ValidationError } from "../../../../packages/error-handler";
+import jwt from "jsonwebtoken";
+import { setCookies } from "../utils/cookies/setCookies";
+
 // Register a new user
 
 export const userRegistration = async (
@@ -65,6 +68,57 @@ export const verifyUser = async (
     res
       .status(201)
       .json({ success: true, message: "User registered successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// login user
+
+export const loginUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return next(new ValidationError("Email and password are required"));
+    }
+    const user = await prisma.users.findUnique({ where: { email } });
+    if (!user) {
+      return next(new AuthError("User Dose not exist"));
+    }
+    // verufy password
+    const isPasswordValid = await bcrypt.compare(password, user.password!);
+    if (!isPasswordValid) {
+      return next(new AuthError("Invalid email or password"));
+    }
+
+    // generate access token and refresh token
+    const accessToken = jwt.sign(
+      { id: user.id, role: "user" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "15m" }
+    );
+    const refreshToken = jwt.sign(
+      { id: user.id, role: "user" },
+      process.env.JWT_REFRESH_TOKEN_SECRET as string,
+      { expiresIn: "7d" }
+    );
+
+    // STORE REFRESH AND ACCESS TOKEN IN HTTP-ONLY COOKIE
+    setCookies(res, accessToken, refreshToken);
+    //  Send response to client
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    });
   } catch (error) {
     return next(error);
   }
