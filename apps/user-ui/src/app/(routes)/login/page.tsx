@@ -5,6 +5,8 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
+import { useMutation } from "@tanstack/react-query";
+import axios, { AxiosError } from "axios";
 
 type FormData = {
   email: string;
@@ -13,7 +15,7 @@ type FormData = {
 
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [serverError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
 
@@ -23,8 +25,34 @@ const Login = () => {
     formState: { errors },
   } = useForm<FormData>();
 
+  const loginMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/login-user`,
+        data,
+        {
+          withCredentials: true,
+        }
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      setServerError(null);
+      router.push("/");
+    },
+    onError: (error: AxiosError) => {
+      const errorMessage =
+        (
+          error.response?.data as {
+            message: string;
+          }
+        )?.message || "Invalid credentials";
+      setServerError(errorMessage);
+    },
+  });
+
   const onSubmit = (data: FormData) => {
-    console.log(data);
+    loginMutation.mutate(data);
   };
 
   return (
@@ -104,10 +132,13 @@ const Login = () => {
               <input
                 type={passwordVisible ? "text" : "password"}
                 placeholder="Enter password Min 6 characters"
-                {...register("password", { required: "Password is required", minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                } })}
+                {...register("password", {
+                  required: "Password is required",
+                  minLength: {
+                    value: 6,
+                    message: "Password must be at least 6 characters",
+                  },
+                })}
                 className="border rounded-lg px-4 py-3 pr-12 focus:outline-none focus:border-primary"
               />
 
@@ -148,9 +179,36 @@ const Login = () => {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition"
+              className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition disabled:opacity-70"
+              disabled={loginMutation.isPending}
             >
-              Login
+              {loginMutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Logging in...
+                </span>
+              ) : (
+                "Login"
+              )}
             </button>
           </form>
         </div>

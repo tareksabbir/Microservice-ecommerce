@@ -116,7 +116,11 @@ const SignUp = () => {
       inputRefs.current[index - 1]?.focus();
     }
   };
-  const handleRedendOtp = () => {};
+  const handleRedendOtp = () => {
+    if(userData){
+      signupMutation.mutate(userData);
+    }
+  };
 
   return (
     <div className="w-full py-10 min-h-[85vh] md:mt-10">

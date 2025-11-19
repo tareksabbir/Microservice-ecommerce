@@ -1,5 +1,6 @@
 import Header, { Topbar } from "@/shared/widgets/header";
 import "./global.css";
+import { Toaster } from "sonner";
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -31,6 +32,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Provider>
+          <Toaster />
           <Topbar />
           <Header />
           {children}
